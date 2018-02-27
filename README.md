@@ -1,9 +1,14 @@
 # React Native Media Meta 
 
 > Get media file metadata in your React Native app
-> Audio Only Version for Android
-> Duration in seconds
-> Chapter Metadata for audio
+
+## Modifications from the orginal repo
+
+> Changes are only for Android
+
+  * Only audio metadata (video files ignored)
+  * Duration in seconds 
+  * Chapters metadata for audio 
 
 ## Installation
 
