@@ -1,11 +1,14 @@
-# React Native Media Meta [![NPM version](http://img.shields.io/npm/v/react-native-media-meta.svg?style=flat)](https://www.npmjs.com/package/react-native-media-meta)
+# React Native Media Meta 
 
 > Get media file metadata in your React Native app
+> Audio Only Version for Android
+> Duration in seconds
+> Chapter Metadata for audio
 
 ## Installation
 
 ```bash
-$ npm install react-native-media-meta --save
+$ npm install git+https://github.com/lokdevp/react-native-media-meta.git
 $ react-native link
 ```
 
@@ -20,13 +23,20 @@ MediaMeta.get(path)
   .catch(err => console.error(err));
 ```
 
+```js
+// for metadata with chapters
+const metadataWithChapters = await MediaMeta.get(path, {
+          getChapters: true,
+});
+```
+
 ## API
 
 #### `MediaMeta.get(path)` - Promise
 
 Resolve: Object - included following keys (If it's found)
-* `thumb` - Base64 image string (video: get first frame, audio: get artwork if exist)
-* `duration` (video only)
+* `thumb` - Base64 image string (audio: get artwork if exist)
+* `duration` 
 * `width` - the thumb width
 * `height` - the thumb height
 * Others:

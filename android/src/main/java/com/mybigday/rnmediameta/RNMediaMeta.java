@@ -15,6 +15,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableArray;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -38,29 +39,12 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
   private final String[] metadatas = {
     "album",
     "album_artist",
-    "comment",
-    "copyright",
-    "creation_time",
-    "disc",
-    "encoder",
-    "encoded_by",
-    "genre",
-    "language",
     "performer",
-    "publisher",
-    "service_name",
-    "service_provider",
     "track",
     "variant_bitrate",
-    "icy_metadata",
-    "framerate",
-    "chapter_start_time",
-    "chapter_end_time",
     "artist",
     "composer",
     "title",
-    "date",
-    "duration",
     "rotation"
   };
 
@@ -85,16 +69,18 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
       return;
     }
 
+    // duration in seconds
+    int durationDivisor = 1000;
+
     FFmpegMediaMetadataRetriever mmr = new FFmpegMediaMetadataRetriever();
     WritableMap result = Arguments.createMap();
     try {
       mmr.setDataSource(path);
 
-      // check is media
+      // check is audio
       String audioCodec = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_AUDIO_CODEC);
-      String videoCodec = mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_CODEC);
 
-      if (audioCodec == null && videoCodec == null) {
+      if (audioCodec == null) {
         promise.resolve(result);
         mmr.release();
         return;
@@ -104,13 +90,11 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
       for (String meta: metadatas) {
         putString(result, meta, mmr.extractMetadata(meta));
       }
+      result.putInt("duration",Integer.parseInt(mmr.extractMetadata("duration"))/durationDivisor);
 
       if (result.hasKey("framerate") && !result.hasKey("rotation")) {
         putString(result, "rotation", mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION));
       }
-
-      // Legacy support & camelCase
-      result.putString("createTime", result.getString("creation_time"));
 
       if (options.getBoolean("getThumb")) {
         // get thumb
@@ -137,6 +121,28 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
           result.putInt("height", bmp.getHeight());
           result.putString("thumb", convertToBase64(bytes));
         }
+      }
+
+      if (options.getBoolean("getChapters")) {        
+        int chapterCount = Integer.parseInt(mmr.extractMetadata(
+          FFmpegMediaMetadataRetriever.METADATA_CHAPTER_COUNT));
+        if (chapterCount != 0){
+          WritableArray chapters =  Arguments.createArray();          
+          for(int i=0; i<chapterCount; i++)
+          {
+            WritableMap chapter = Arguments.createMap();
+            int startTime = Integer.parseInt(mmr.extractMetadataFromChapter(
+              FFmpegMediaMetadataRetriever.METADATA_KEY_CHAPTER_START_TIME,i))/durationDivisor;
+            int endTime = Integer.parseInt(mmr.extractMetadataFromChapter(
+              FFmpegMediaMetadataRetriever.METADATA_KEY_CHAPTER_END_TIME,i))/durationDivisor;
+            chapter.putInt(FFmpegMediaMetadataRetriever.METADATA_KEY_CHAPTER_START_TIME,startTime);
+            chapter.putInt(FFmpegMediaMetadataRetriever.METADATA_KEY_CHAPTER_END_TIME,endTime);
+            chapter.putInt("duration",endTime-startTime);            
+            putString(chapter, "title", mmr.extractMetadataFromChapter("title",i));            
+            chapters.pushMap(chapter);
+          }          
+          result.putArray("chapters", chapters);
+        }        
       }
 
     } catch(Exception e) {
