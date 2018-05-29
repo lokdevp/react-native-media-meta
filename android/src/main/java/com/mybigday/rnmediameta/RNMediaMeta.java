@@ -86,39 +86,15 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
         return;
       }
 
-      // get all metadata - TODO :: Loop through only values for audio or video metadata based on media type for a small performance boost
       for (String meta: metadatas) {
         putString(result, meta, mmr.extractMetadata(meta));
       }
       result.putInt("duration",Integer.parseInt(mmr.extractMetadata("duration"))/durationDivisor);
 
-      if (result.hasKey("framerate") && !result.hasKey("rotation")) {
-        putString(result, "rotation", mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION));
-      }
-
       if (options.getBoolean("getThumb")) {
         // get thumb
-        Bitmap bmp = mmr.getFrameAtTime();
-        if (bmp != null) {
-          // Bitmap bmp2 = mmr.getFrameAtTime((long) 4E6, FFmpegMediaMetadataRetriever.OPTION_CLOSEST);
-          // if (bmp2 != null) bmp = bmp2;
-
-          /*
-          * The image returned seems to be always in landscape mode and does not follow
-          * the rotation of the video.
-          * get the rotation from the metadata and apply the correction so the image is straight.
-          */
-
-          if (result.hasKey("rotation")) {
-            Bitmap rotatedBmp = RotateBitmap(bmp, Float.parseFloat(result.getString("rotation")));
-            if (rotatedBmp != null) {
-              bmp = rotatedBmp;
-            }
-          }
-
-          byte[] bytes = convertToBytes(bmp);
-          result.putInt("width", bmp.getWidth());
-          result.putInt("height", bmp.getHeight());
+        byte [] bytes = mmr.getEmbeddedPicture();
+        if (bytes != null) {
           result.putString("thumb", convertToBase64(bytes));
         }
       }
@@ -153,22 +129,9 @@ public class RNMediaMeta extends ReactContextBaseJavaModule {
     }
   }
 
-  private Bitmap RotateBitmap(Bitmap source, float angle)
-  {
-    Matrix matrix = new Matrix();
-    matrix.postRotate(angle);
-    return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
-  }
-
-
   @ReactMethod
   public void get(final String path, final ReadableMap options, final Promise promise) {
-
-    new Thread() {
-      @Override
-      public void run() {
-        getMetadata(path, options, promise);
-      }
-    }.start();
+    getMetadata(path, options, promise);
   }
 }
+ 
